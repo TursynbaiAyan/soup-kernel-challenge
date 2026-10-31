@@ -189,6 +189,11 @@ def _dgrad(g, weight, out, scale):
         num_warps=DGRAD_WARPS, num_stages=DGRAD_STAGES)
 
 
+def use_triton_matmul(device):
+    """Our matmul kernels on Ampere and newer; cuBLAS on Turing (T4), where tl.dot is slow."""
+    return torch.cuda.get_device_capability(device) >= (8, 0)
+
+
 class FusedHeadLoss(torch.autograd.Function):
     """Loss, per-position metrics and the gradient on the hidden states in one forward."""
 
@@ -222,18 +227,31 @@ class FusedHeadLoss(torch.autograd.Function):
 
         buffer = torch.empty((min(chunk, max(n_rows, 1)), vocab), device=hidden.device,
                              dtype=compute_dtype)
+        # On Turing (T4, sm75) Triton's tl.dot is far slower than cuBLAS, so there the two
+        # matmuls go to cuBLAS on a per-call fp16 copy of the head (what autocast makes anyway)
+        # and Triton keeps the vocabulary pass; on Ampere and newer our matmul kernels run.
+        triton_mm = use_triton_matmul(hidden.device)
+        w_c = None if triton_mm else weight.to(compute_dtype)
         for start in range(0, n_rows, chunk):
             stop = min(start + chunk, n_rows)
             logits = buffer[: stop - start]
-            _logits(x[start:stop], weight, logits)
+            if triton_mm:
+                _logits(x[start:stop], weight, logits)
+            else:
+                torch.matmul(x[start:stop], w_c.t(), out=logits)
             chunk_lab = max(0, min(n_lab, stop) - start)
             ce_stats_grad_kernel[(stop - start,)](
                 logits, row_target[start:stop], loss_rows[start:stop],
                 entropy_rows[start:stop], correct_rows[start:stop], vocab, logits.stride(0),
                 chunk_lab, GRAD_SCALE=GRAD_SCALE, BLOCK=CE_BLOCK, num_warps=CE_WARPS)
             if with_grad and chunk_lab > 0:
-                _dgrad(logits[:chunk_lab], weight, dh_rows[start:start + chunk_lab], grad_scale)
-        del buffer
+                if triton_mm:
+                    _dgrad(logits[:chunk_lab], weight, dh_rows[start:start + chunk_lab],
+                           grad_scale)
+                else:
+                    dh_rows[start:start + chunk_lab] = \
+                        torch.matmul(logits[:chunk_lab], w_c).float() * grad_scale
+        del buffer, w_c
 
         loss = loss_rows[:n_lab].sum() / denominator
         token_entropy = torch.zeros(batch * seq, device=hidden.device, dtype=torch.float32)

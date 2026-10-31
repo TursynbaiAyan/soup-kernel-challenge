@@ -96,3 +96,23 @@ def test_fused_head_loss_matches_pytorch(batch, seq, width, vocab, chunk, items)
     assert abs(int(correct) - int(ref[3])) <= max(1, int(ref[4]) // 200)
     scale = ref_grad.abs().max()
     torch.testing.assert_close(hidden.grad / scale, ref_grad / scale, rtol=0, atol=2e-3)
+
+
+@pytest.mark.parametrize("shape", [(4, 300, 8960), (3, 77, 1001)])
+def test_inplace_swiglu_matches_pytorch(shape):
+    from solution.mlp_act import InplaceSwiGLU
+
+    torch.manual_seed(0)
+    gate = torch.randn(shape, device="cuda", dtype=torch.float16, requires_grad=True)
+    up = torch.randn(shape, device="cuda", dtype=torch.float16, requires_grad=True)
+    grad = torch.randn(shape, device="cuda", dtype=torch.float16)
+    ref = torch.nn.functional.silu(gate.float()) * up.float()
+    ref.backward(grad.float())
+    ref_dg, ref_du = gate.grad.float(), up.grad.float()
+    gate.grad = up.grad = None
+    g2, u2 = gate.detach().clone().requires_grad_(), up.detach().clone().requires_grad_()
+    out = InplaceSwiGLU.apply(g2 * 1, u2 * 1)  # non-leaf inputs, as in the MLP
+    out.backward(grad)
+    torch.testing.assert_close(out.float(), ref, rtol=2e-3, atol=2e-3)
+    torch.testing.assert_close(g2.grad.float(), ref_dg, rtol=2e-3, atol=2e-3)
+    torch.testing.assert_close(u2.grad.float(), ref_du, rtol=2e-3, atol=2e-3)
