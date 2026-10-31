@@ -5,7 +5,7 @@
 - Public Kaggle notebook, the saved version (`COMMIT` in it = the sha above; the same link is in
   README.md):
   https://www.kaggle.com/code/<you>/<notebook>?scriptVersionId=<version>
-- Demo video (up to 3 minutes): https://github.com/TursynbaiAyan/soup-kernel-challenge/blob/main/docs/Soup-Kernel-Brightly-demo.mp4
+- Demo video (up to 3 minutes): https://github.com/TursynbaiAyan/soup-kernel-challenge/blob/main/docs/video/Soup-Kernel-Brightly-demo.mp4
 - Presentation: https://github.com/TursynbaiAyan/soup-kernel-challenge/blob/main/docs/Soup-Kernel-Brightly.pptx
 
 ## Team (up to 4 people)

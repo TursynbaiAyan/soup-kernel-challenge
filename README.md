@@ -10,7 +10,7 @@ Kaggle T4, но голова модели и функция потерь счи�
 - **Финальный коммит:** `<ссылка на коммит>`
 - **Презентация:** [docs/Soup-Kernel-Brightly.pptx](docs/Soup-Kernel-Brightly.pptx)
   (генератор `docs/build_deck.cjs`, цифры из `docs/results.json`)
-- **Демо-видео (2:01):** [docs/Soup-Kernel-Brightly-demo.mp4](docs/Soup-Kernel-Brightly-demo.mp4)
+- **Демо-видео (2:01):** [docs/video/Soup-Kernel-Brightly-demo.mp4](docs/video/Soup-Kernel-Brightly-demo.mp4)
   (исходники в `docs/video/`: canvas-анимация, озвучка, рендер)
 - **Ноутбук для Kaggle с этим репозиторием:** [kaggle/soup_kernel_run.ipynb](kaggle/soup_kernel_run.ipynb)
 
