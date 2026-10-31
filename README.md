@@ -6,6 +6,7 @@ Kaggle T4, но голова модели и функция потерь счи�
 тензора логитов `[batch, seq, 151 936]` и только по реальным (не pad) позициям.
 
 - **Kaggle-ноутбук (публичная сохранённая версия):** `<ссылка на Kaggle-ноутбук>`
+- **Репозиторий:** https://github.com/TursynbaiAyan/soup-kernel-challenge
 - **Финальный коммит:** `<ссылка на коммит>`
 
 ## Что сделано и почему
@@ -83,7 +84,7 @@ GradScaler). В памяти одновременно живёт лишь буф
 
 1. Kaggle → **Create → New Notebook → File → Import Notebook** → `templates/kaggle_notebook.ipynb`.
 2. Справа: **Accelerator: GPU T4 x2**, **Internet: on**.
-3. В первой ячейке: `REPO_URL = "<URL этого репозитория>"`, `COMMIT = "<финальный коммит>"`.
+3. В первой ячейке: `REPO_URL = "https://github.com/TursynbaiAyan/soup-kernel-challenge.git"`, `COMMIT = "<финальный коммит>"`.
 4. **Run All** (около 10 минут). В конце `harness/run_task.py` печатает `speedup`,
    `memory base/solution` и `eval loss vs base`, а `harness/check_rules.py` — 10 проверок.
 

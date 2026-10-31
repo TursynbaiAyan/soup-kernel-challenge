@@ -1,7 +1,7 @@
 # Submission: <team name>
 
 ## Links
-- Repository, final commit: https://github.com/<you>/<repo>/commit/<sha>
+- Repository, final commit: https://github.com/TursynbaiAyan/soup-kernel-challenge/commit/<sha>
 - Public Kaggle notebook, the saved version (`COMMIT` in it = the sha above; the same link is in
   README.md):
   https://www.kaggle.com/code/<you>/<notebook>?scriptVersionId=<version>
