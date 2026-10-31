@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Soup Kernel — demo</title>
+<style>html,body{margin:0;background:#0E1116}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+// Demo video for the Soup Kernel Challenge. window.render(t) draws frame t (seconds);
+// window.TIMELINE (scene times from the narration) and its results are injected by render.mjs.
+const W = 1920, H = 1080;
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+const COL = { bg: '#0E1116', panel: '#1B2230', amber: '#F5A524', teal: '#2EC4B6', red: '#E4572E',
+  grey: '#7C8799', light: '#EEF1F5', white: '#FFFFFF', dim: '#3A4352' };
+const HEAD = 'Bahnschrift, "Segoe UI", Arial, sans-serif', BODY = '"Segoe UI", Arial, sans-serif',
+  MONO = 'Consolas, "Courier New", monospace';
+
+const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+const ease = (x) => { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2; };
+const out = (x) => 1 - (1 - clamp(x)) ** 3;
+const lerp = (a, b, x) => a + (b - a) * x;
+const ru = (v, d = 0) => v.toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d });
+let seed = 1;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+function text(s, x, y, { size = 40, font = BODY, weight = 400, color = COL.white, align = 'left',
+  base = 'alphabetic', alpha = 1 } = {}) {
+  g.save(); g.globalAlpha *= alpha; g.fillStyle = color; g.textAlign = align; g.textBaseline = base;
+  g.font = `${weight} ${size}px ${font}`; g.fillText(s, x, y); g.restore();
+}
+function rrect(x, y, w, h, r, fill, alpha = 1, stroke) {
+  g.save(); g.globalAlpha *= alpha; g.beginPath(); g.roundRect(x, y, w, h, r);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = 3; g.stroke(); }
+  g.restore();
+}
+function chip(x, y, label, fill, color = COL.bg, r = 34) {
+  g.save(); g.fillStyle = fill; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore();
+  text(label, x, y + 2, { size: r * 1.05, font: HEAD, weight: 700, color, align: 'center', base: 'middle' });
+}
+function arrow(x1, y1, x2, y2, color, alpha = 1, w = 5) {
+  g.save(); g.globalAlpha *= alpha; g.strokeStyle = color; g.fillStyle = color; g.lineWidth = w;
+  g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  g.beginPath(); g.moveTo(x2, y2); g.lineTo(x2 - 22 * Math.cos(a - .45), y2 - 22 * Math.sin(a - .45));
+  g.lineTo(x2 - 22 * Math.cos(a + .45), y2 - 22 * Math.sin(a + .45)); g.fill(); g.restore();
+}
+function sceneTitle(s, lt, color = COL.white) {
+  const a = out(lt / .7);
+  text(s, 140, 175 - (1 - a) * 20, { size: 64, font: HEAD, weight: 700, color, alpha: a });
+}
+
+// ---------------------------------------------------------------- background
+const GRID = Array.from({ length: 260 }, () => ({ x: rnd() * W, y: rnd() * H, s: 3 + rnd() * 5,
+  v: .2 + rnd() * .8, p: rnd() * 6.28 }));
+function background(t) {
+  g.fillStyle = COL.bg; g.fillRect(0, 0, W, H);
+  for (const d of GRID) {
+    const y = (d.y - t * 12 * d.v + H) % H;
+    g.globalAlpha = .07 + .06 * Math.sin(t * .8 + d.p);
+    g.fillStyle = d.v > .75 ? COL.amber : COL.grey; g.fillRect(d.x, y, d.s, d.s);
+  }
+  g.globalAlpha = 1;
+}
+function finish(t) {
+  const vg = g.createRadialGradient(W / 2, H / 2, H * .35, W / 2, H / 2, H * .95);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+  g.fillStyle = vg; g.fillRect(0, 0, W, H);
+  // film grain
+  const f = Math.floor(t * 30); seed = 1000 + f;
+  g.globalAlpha = .05;
+  for (let i = 0; i < 900; i++) { g.fillStyle = rnd() > .5 ? '#fff' : '#000'; g.fillRect(rnd() * W, rnd() * H, 2, 2); }
+  g.globalAlpha = 1;
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, 54); g.fillRect(0, H - 54, W, 54); // letterbox
+  text('BRIGHTLY PRODUCTION · SOUP KERNEL CHALLENGE', 140, H - 20, { size: 20, font: HEAD,
+    color: COL.grey, alpha: .8 });
+}
+
+// ---------------------------------------------------------------- scenes
+const S = {};
+S.title = (lt, d) => {
+  const a = out((lt - .3) / 1.2);
+  chip(180, 330, '3', COL.amber, COL.bg, 40);
+  text('своих Triton-кернела', 245, 343, { size: 36, color: COL.light, alpha: out(lt / .8) });
+  text('Голова модели', 140, 520 + (1 - a) * 40, { size: 128, font: HEAD, weight: 700, alpha: a });
+  text('без логитов', 140, 660 + (1 - a) * 40, { size: 128, font: HEAD, weight: 700, color: COL.amber, alpha: a });
+  const b = out((lt - 1.6) / 1);
+  text('Слитый lm_head + cross-entropy для soup train на Kaggle T4', 140, 760, { size: 40, color: COL.teal, alpha: b });
+  text('Decentrathon 6.0', 140, 830, { size: 32, color: COL.grey, alpha: b });
+};
+S.problem = (lt, d, R) => {
+  sceneTitle('T4 упирается в память', lt);
+  // memory gauge
+  const gx = 160, gy = 270, gh = 620, gw = 150, fill = ease((lt - .6) / 3) * (14.3 / 15);
+  rrect(gx, gy, gw, gh, 18, COL.panel);
+  rrect(gx, gy + gh * (1 - fill), gw, gh * fill, 18, fill > .8 ? COL.red : COL.amber);
+  text(`${ru(fill * 15, 1)} ГБ`, gx + gw + 40, gy + gh * (1 - fill) + 20, { size: 64, font: HEAD, weight: 700,
+    color: fill > .8 ? COL.red : COL.white });
+  text('из 15 ГБ', gx + gw + 40, gy + gh * (1 - fill) + 70, { size: 32, color: COL.grey });
+  text('пик памяти базового Soup', gx, gy + gh + 60, { size: 30, color: COL.light });
+  // time
+  const ta = out((lt - 2.5) / .8);
+  text('≈ 80 с', 760, 380, { size: 110, font: HEAD, weight: 700, alpha: ta });
+  text('весь soup train, 64 шага', 760, 435, { size: 32, color: COL.grey, alpha: ta });
+  // logits tensor
+  const p = ease((lt - 5) / 4.5), vx = 760, vy = 560, vw = lerp(60, 1020, p), vh = 260;
+  if (lt > 4.6) {
+    for (let r = 0; r < 4; r++) {
+      rrect(vx + r * 14, vy + r * 14, vw, vh - 42, 10, r === 3 ? COL.amber : COL.dim, .35 + r * .2);
+    }
+    text(`[ 4 × 512 × ${ru(Math.round(lerp(1000, 151936, p)))} ]`, vx + 40, vy + 140, { size: 54,
+      font: MONO, weight: 700, color: COL.bg });
+    text('логиты: словарь Qwen — 151 936 токенов', vx, vy + vh + 50, { size: 32, color: COL.amber,
+      alpha: out((lt - 6) / .8) });
+  }
+};
+S.base = (lt) => {
+  sceneTitle('Что делает база на каждом шаге', lt);
+  const steps = [['Копия веса lm_head в fp16', .47], ['Логиты для всех позиций и pad', .6],
+    ['Их fp32-копия для loss', 1.2], ['Буферы softmax и градиента', 1.2]];
+  let total = 0;
+  steps.forEach(([label, gb], i) => {
+    const a = out((lt - 1 - i * 3.2) / .7);
+    if (a <= 0) return;
+    const y = 280 + i * 150;
+    rrect(140, y, 980, 118, 20, COL.panel, a);
+    chip(210, y + 59, String(i + 1), COL.grey, COL.white, 32);
+    text(label, 280, y + 72, { size: 40, color: COL.light, alpha: a });
+    text(`${ru(gb, gb < 1 ? 2 : 1)} ГБ`, 1080, y + 72, { size: 40, font: HEAD, weight: 700, color: COL.red,
+      align: 'right', alpha: a });
+    total += gb * a;
+  });
+  // stacked memory column
+  const cx = 1330, cy = 260, ch = 620, cw = 220, max = 4;
+  rrect(cx, cy, cw, ch, 18, COL.panel);
+  let acc = 0;
+  steps.forEach(([, gb], i) => {
+    const a = out((lt - 1 - i * 3.2) / .7) * gb;
+    const h = ch * a / max;
+    rrect(cx + 10, cy + ch - (acc + a) / max * ch, cw - 20, Math.max(0, h - 6), 10,
+      [COL.grey, COL.amber, COL.red, '#B23A1F'][i]);
+    acc += a;
+  });
+  text(`${ru(acc, 1)} ГБ`, cx + cw / 2, cy - 30, { size: 60, font: HEAD, weight: 700, color: COL.red, align: 'center' });
+  text('ради одной функции потерь', cx + cw / 2, cy + ch + 55, { size: 28, color: COL.grey, align: 'center' });
+};
+S.kernels = (lt, d) => {
+  sceneTitle('Наше решение: три кернела Triton', lt, COL.amber);
+  // tokens -> real positions
+  const rows = [30, 24, 18, 15], cell = 26, ox = 140, oy = 250;
+  const gather = ease((lt - 2) / 2.5);
+  rows.forEach((len, r) => {
+    for (let c = 0; c < 30; c++) {
+      const real = c < len;
+      const a = real ? 1 : 1 - out((lt - 1) / 1.2);
+      if (a <= 0) continue;
+      const k = rows.slice(0, r).reduce((s, v) => s + v, 0) + c;
+      const x0 = ox + c * (cell + 6), y0 = oy + r * (cell + 6);
+      const x1 = ox + (k % 44) * (cell - 6 + 4), y1 = oy + 155 + Math.floor(k / 44) * (cell - 4);
+      const x = real ? lerp(x0, x1, gather) : x0, y = real ? lerp(y0, y1, gather) : y0;
+      rrect(x, y, real ? lerp(cell, cell - 6, gather) : cell, real ? lerp(cell, cell - 8, gather) : cell, 4,
+        real ? COL.teal : COL.dim, a * (real ? .9 : .6));
+    }
+  });
+  text('pad отброшен → только настоящие токены, чанки по 1 024', ox, oy + 225, { size: 30,
+    color: COL.light, alpha: out((lt - 1.5) / 1) });
+  // three stages
+  const stageT = [6.5, 13, 20.5];
+  const cards = [['1', 'Логиты = h · Wᵀ', 'lm_head_logits_kernel', 'вес читается в fp32'],
+    ['2', 'Online-softmax по словарю', 'ce_stats_grad_kernel', 'loss · энтропия · argmax · градиент'],
+    ['3', 'dh = G · W, split-K', 'lm_head_dgrad_kernel', 'частичные суммы → atomic_add']];
+  cards.forEach(([n, title, name, note], i) => {
+    const a = out((lt - stageT[i]) / .8);
+    if (a <= 0) return;
+    const x = 140 + i * 560, y = 520, w = 520, h = 440;
+    const active = lt >= stageT[i] && (i === 2 || lt < stageT[i + 1]);
+    rrect(x, y + (1 - a) * 30, w, h, 24, COL.panel, a, active ? COL.amber : null);
+    chip(x + 60, y + 62, n, COL.amber, COL.bg, 30);
+    text(title, x + 110, y + 75, { size: 34, font: HEAD, weight: 700, alpha: a });
+    text(name, x + 40, y + 130, { size: 26, font: MONO, color: COL.teal, alpha: a });
+    text(note, x + 40, y + h - 32, { size: 26, color: COL.grey, alpha: a });
+    const lt2 = lt - stageT[i];
+    g.save(); g.globalAlpha = a;
+    if (i === 0) { // tiles sweeping over the logits matrix
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 10; c++) {
+        const on = (r + c * 5) < (lt2 * 9) % 60;
+        rrect(x + 40 + c * 44, y + 170 + r * 44, 38, 38, 6, on ? COL.amber : COL.dim, on ? .95 : .5);
+      }
+    } else if (i === 1) { // scan cursor over the vocabulary
+      const bx = x + 40, by = y + 175, bw = w - 80;
+      for (let k = 0; k < 60; k++) {
+        const hgt = 20 + 80 * Math.abs(Math.sin(k * 1.7) * Math.cos(k * .37));
+        rrect(bx + k * (bw / 60), by + 110 - hgt, bw / 60 - 2, hgt, 2, k === 41 ? COL.amber : COL.grey, .8);
+      }
+      const cur = (lt2 / 5) % 1;
+      g.fillStyle = COL.teal; g.fillRect(bx + cur * bw, by - 10, 4, 130);
+      const vals = [['max', ru(9.1 * Math.min(1, cur * 1.6 + .3), 2)], ['Σe', ru(400 * cur + 12, 1)],
+        ['H', ru(2.9 * cur + .4, 2)]];
+      vals.forEach(([k, v], j) => text(`${k} = ${v}`, bx + j * 150, by + 180, { size: 26, font: MONO, color: COL.light }));
+    } else { // split-K: partial blocks flowing into dh
+      for (let k = 0; k < 4; k++) {
+        const py = y + 180 + k * 52, f = clamp((lt2 * .8 - k * .25) % 1.6);
+        rrect(x + 40, py, 120, 40, 6, COL.dim, .9);
+        text(`K/${4}·${k + 1}`, x + 100, py + 29, { size: 22, font: MONO, color: COL.light, align: 'center' });
+        arrow(x + 170, py + 20, lerp(x + 170, x + 330, f), lerp(py + 20, y + 280, f), COL.amber, .9, 4);
+      }
+      rrect(x + 340, y + 235, 140, 90, 12, COL.teal);
+      text('dh', x + 410, y + 293, { size: 40, font: HEAD, weight: 700, color: COL.bg, align: 'center' });
+    }
+    g.restore();
+  });
+};
+S.results = (lt, d, R) => {
+  sceneTitle('Результат: голова шага', lt);
+  const L = R.local;
+  const charts = [['Время forward + backward', L.head_ms_base, L.head_ms_ours, 'мс', 140],
+    ['Дополнительный пик памяти', L.head_mib_base, L.head_mib_ours, 'МиБ', 1010]];
+  charts.forEach(([title, base, ours, unit, x], i) => {
+    const a = out((lt - .5 - i * 1.2) / .7);
+    text(title, x, 280, { size: 36, color: COL.light, alpha: a });
+    const p = ease((lt - 1 - i * 1.2) / 2.2), maxH = 420, by = 800;
+    [[base, COL.grey, 'Эталон (autocast)'], [ours, COL.amber, 'Наши кернелы']].forEach(([v, c, lab], j) => {
+      const h = maxH * v / base * p, bx = x + 40 + j * 330;
+      rrect(bx, by - h, 230, h, 12, c, a);
+      text(`${ru(Math.round(v * p))} ${unit}`, bx + 115, by - h - 24, { size: 40, font: HEAD, weight: 700,
+        align: 'center', alpha: a });
+      text(lab, bx + 115, by + 50, { size: 28, color: COL.grey, align: 'center', alpha: a });
+    });
+  });
+  const b = out((lt - 5.5) / .8);
+  rrect(470, 880, 980, 110, 24, COL.panel, b);
+  text(`в ${ru(L.head_ms_base / L.head_ms_ours, 1)} раза быстрее · в ${ru(Math.round(L.head_mib_base / L.head_mib_ours))} раз легче`,
+    960, 952, { size: 48, font: HEAD, weight: 700, color: COL.amber, align: 'center', alpha: b });
+};
+S.correct = (lt, d, R) => {
+  sceneTitle('То же обучение, те же метрики', lt);
+  const L = R.local;
+  const rows = [['Loss, первый шаг', L.loss_first_pct, '1%'], ['Loss, среднее по шагам', L.loss_mean_pct, '3%'],
+    ['Энтропия, точность, токены', 0, '3%'], ['Loss строк в rewind.jsonl', L.rewind_max_pct, '3%']];
+  text('отличие от базы', 860, 270, { size: 28, color: COL.grey, align: 'right' });
+  text('допуск', 1040, 270, { size: 28, color: COL.grey, align: 'right' });
+  rows.forEach(([k, v, tol], i) => {
+    const a = out((lt - .6 - i * .7) / .6), y = 300 + i * 120;
+    rrect(140, y, 940, 96, 18, COL.panel, a);
+    text(k, 180, y + 62, { size: 36, color: COL.light, alpha: a });
+    text(`${ru(v * clamp((lt - 1 - i * .7) / 1.5), 4)}%`, 860, y + 62, { size: 38, font: MONO, weight: 700,
+      color: COL.teal, align: 'right', alpha: a });
+    text(tol, 1040, y + 62, { size: 34, color: COL.grey, align: 'right', alpha: a });
+  });
+  // 79 tests
+  const n = Math.round(clamp((lt - 4) / 4) * L.soup_tests);
+  for (let i = 0; i < L.soup_tests; i++) {
+    const x = 1200 + (i % 10) * 56, y = 300 + Math.floor(i / 10) * 56;
+    g.fillStyle = i < n ? COL.teal : COL.dim; g.beginPath(); g.arc(x + 20, y + 20, 20, 0, Math.PI * 2); g.fill();
+  }
+  text(`${n} / ${L.soup_tests} тестов Soup`, 1200, 820, { size: 48, font: HEAD, weight: 700,
+    color: n === L.soup_tests ? COL.teal : COL.white });
+  text('проходят с нашими патчами', 1200, 870, { size: 30, color: COL.grey });
+};
+S.kaggle = (lt, d, R) => {
+  const K = R.kaggle;
+  sceneTitle('Kaggle T4: весь soup train', lt, COL.amber);
+  const items = [[`${ru(K.speedup, 2)}×`, `быстрее · ${ru(K.time_base, 1)} → ${ru(K.time_ours, 1)} с`, COL.teal],
+    [`${ru(K.memory, 2)}×`, `меньше памяти · ${ru(K.mem_base)} → ${ru(K.mem_ours)} МиБ`, COL.amber],
+    [`${K.eval_pct >= 0 ? '+' : ''}${ru(K.eval_pct, 2)}%`, 'eval loss против базы', COL.white]];
+  items.forEach(([big, lab, c], i) => {
+    const a = out((lt - .6 - i * 1) / .7), x = 140 + i * 560;
+    rrect(x, 330, 520, 420, 24, COL.panel, a);
+    text(big, x + 50, 520, { size: 120, font: HEAD, weight: 700, color: c, alpha: a });
+    text(lab, x + 50, 600, { size: 30, color: COL.light, alpha: a });
+  });
+};
+S.outro = (lt, d, R) => {
+  const a = out(lt / 1);
+  ['Тот же адаптер.', 'Меньше памяти.', 'Быстрее.'].forEach((s, i) => {
+    const b = out((lt - i * .8) / .8);
+    text(s, 140, 420 + i * 130, { size: 110, font: HEAD, weight: 700, color: i === 2 ? COL.amber : COL.white, alpha: b });
+  });
+  const c = out((lt - 3) / 1);
+  text(R.repo, 140, 860, { size: 40, font: MONO, color: COL.teal, alpha: c });
+  text(`${R.team} · Decentrathon 6.0`, 140, 920, { size: 32, color: COL.grey, alpha: c });
+};
+
+// ---------------------------------------------------------------- frame
+window.render = (t) => {
+  const TL = window.TIMELINE;
+  background(t);
+  const sc = TL.scenes.find((s) => t >= s.start && t < s.end) || TL.scenes[TL.scenes.length - 1];
+  const lt = t - sc.start, d = sc.end - sc.start;
+  const fade = Math.min(clamp(lt / .5), sc === TL.scenes[TL.scenes.length - 1] ? 1 : clamp((sc.end - t) / .45));
+  g.save(); g.globalAlpha = fade; S[sc.id](lt, d, TL.results); g.restore();
+  const tail = TL.total - t; // fade to black at the very end
+  if (tail < 1) { g.fillStyle = `rgba(0,0,0,${1 - tail})`; g.fillRect(0, 0, W, H); }
+  finish(t);
+};
+window.ready = document.fonts.ready;
+</script>
+</body>
+</html>

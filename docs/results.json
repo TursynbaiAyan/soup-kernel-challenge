@@ -1,0 +1,15 @@
+{
+  "team": "Brightly Production",
+  "repo": "github.com/TursynbaiAyan/soup-kernel-challenge",
+  "local": {
+    "gpu": "RTX 3050 6 GB",
+    "head_ms_base": 218, "head_ms_ours": 93,
+    "head_mib_base": 3800, "head_mib_ours": 295,
+    "logits_ms": 35.0, "logits_cublas_ms": 36.5,
+    "dgrad_ms": 34.9, "dgrad_cublas_ms": 32.2, "ce_ms": 7.6,
+    "e2e_peak_base": 2030, "e2e_peak_ours": 473,
+    "loss_first_pct": 0.0001, "loss_mean_pct": 0.0001, "rewind_max_pct": 0.0005,
+    "soup_tests": 79
+  },
+  "kaggle": null
+}
